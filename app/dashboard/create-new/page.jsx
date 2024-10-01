@@ -8,6 +8,8 @@ import axios from 'axios';
 import CustomLoading from './_components/CustomLoading';
 import { v4 as uuidv4 } from 'uuid';
 import { useVideoData } from '@/app/_context/useVideoData';  // Custom hook for state
+import { db } from '@/configs/db';
+import { VideoData } from '@/configs/schema';
 
 function CreateNew() {
   const [formData, setFormData] = useState({});
@@ -134,9 +136,33 @@ function CreateNew() {
     }
   };
   
-  useEffect(() => {
-    console.log({ videoScript, audioFileUrl, captions, imageList });
-  }, [videoScript, audioFileUrl, captions, imageList]);
+  // Function to save video data to the database
+const saveVideoData = async (data) => {
+  try {
+    // Insert the collected video data into the VideoData table
+    await db.insert(VideoData).values(data);
+    console.log('Video data saved to database successfully');
+  } catch (error) {
+    console.error('Error saving video data to database:', error);
+  }
+};
+
+// Call this function after all the data (videoScript, audioFileUrl, captions, imageList) is ready
+useEffect(() => {
+  if (videoScript.length > 0 && audioFileUrl && captions.length > 0 && imageList.length > 0) {
+    const videoData = {
+      videoScript,
+      audioFileUrl,
+      captions,
+      imageList,
+      createdBy: 'user@example.com', // Replace with actual user email or identifier
+    };
+
+    // Save video data to the database
+    saveVideoData(videoData);
+  }
+}, [videoScript, audioFileUrl, captions, imageList]);
+
 
   return (
     <div>
