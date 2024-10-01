@@ -12,6 +12,8 @@ const firebaseConfig = {
   measurementId: "G-40H557QPPV"
 };
 
+// Initialize Firebase only if there are no existing apps
+const app = !getApps().length ? initializeApp(firebaseConfig) : getApps()[0];
 
-const app = initializeApp(firebaseConfig);
-export const storage=getStorage(app);
+// Get Firebase storage
+export const storage = getStorage(app);

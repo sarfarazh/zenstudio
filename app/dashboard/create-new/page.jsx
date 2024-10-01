@@ -1,5 +1,5 @@
 "use client";
-import React, { useContext, useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import SelectTopic from './_components/SelectTopic';
 import SelectStyle from './_components/SelectStyle';
 import SelectDuration from './_components/SelectDuration';
@@ -7,20 +7,26 @@ import { Button } from '@/components/ui/button';
 import axios from 'axios';
 import CustomLoading from './_components/CustomLoading';
 import { v4 as uuidv4 } from 'uuid';
-import { VideoDataContext } from '@/app/_context/VideoDataContext';
+import { useVideoData } from '@/app/_context/useVideoData';  // Custom hook for state
 
 function CreateNew() {
-  const [formData, setFormData] = useState([]);
+  const [formData, setFormData] = useState({});
   const [loading, setLoading] = useState(false);
-  const [videoScript, setVideoScript] = useState([]); // Initialize as an empty array
-  const [audioFileUrl, setAudioFileUrl] = useState();
-  const [captions, setCaptions] = useState();
-  const [imageList, setImageList] = useState([]);
-  const {videoData,setVideoData}=useContext(VideoDataContext);
+
+  // Using video data from the context
+  const {
+    videoScript,
+    audioFileUrl,
+    captions,
+    imageList,
+    setVideoScript,
+    setAudioFileUrl,
+    setCaptions,
+    setImageList,
+  } = useVideoData();  // Custom hook to manage video data
 
   const onHandleInputChange = (fieldName, fieldValue) => {
     console.log(fieldName, fieldValue);
-
     setFormData((prev) => ({
       ...prev,
       [fieldName]: fieldValue,
@@ -44,21 +50,13 @@ function CreateNew() {
     console.log(prompt);
   
     try {
-      const result = await axios.post('/api/get-video-script', {
-        prompt: prompt,
-      });
-  
+      const result = await axios.post('/api/get-video-script', { prompt });
       console.log('API response:', result.data);
   
-      // Check if the result is an array and contains the expected fields
       if (result.data && Array.isArray(result.data.result)) {
         console.log('Valid videoScript:', result.data.result);
-        setVideoData(prev=>({
-          ...prev,
-          'videoScript':result.data.result
-        }))
-        setVideoScript(result.data.result); // Update state asynchronously
-        await GenerateAudioFile(result.data.result); // Pass videoScriptData directly
+        setVideoScript(result.data.result);  // Use context's dispatch for video script
+        await GenerateAudioFile(result.data.result);  // Pass videoScriptData directly
       } else {
         console.error('Invalid or missing videoScript in API response.');
       }
@@ -74,7 +72,6 @@ function CreateNew() {
     let script = '';
     const id = uuidv4();
   
-    // Ensure we have valid contentText
     videoScriptData.forEach((item) => {
       script += item.contentText ? item.contentText + ' ' : '';
     });
@@ -88,19 +85,9 @@ function CreateNew() {
     }
   
     try {
-      const response = await axios.post('/api/generate-audio', {
-        text: script,
-        id: id,
-      });
-  
+      const response = await axios.post('/api/generate-audio', { text: script, id });
       console.log('Audio generation response:', response.data);
-      setVideoData(prev=>({
-        ...prev,
-        'audioFileUrl':response.data.Result
-      }))
-      setAudioFileUrl(response.data.Result);
-  
-      // Pass videoScriptData to GenerateAudioCaption
+      setAudioFileUrl(response.data.Result);  // Update context with audio file URL
       await GenerateAudioCaption(response.data.Result, videoScriptData);
     } catch (error) {
       console.error('Error generating audio:', error);
@@ -109,21 +96,12 @@ function CreateNew() {
     }
   };
   
-
   const GenerateAudioCaption = async (fileUrl, videoScriptData) => {
     setLoading(true);
     try {
-      const response = await axios.post('/api/generate-caption', {
-        audioFileUrl: fileUrl,
-      });
-      setVideoData(prev=>({
-        ...prev,
-        'captions':response.data.result
-      }))
+      const response = await axios.post('/api/generate-caption', { audioFileUrl: fileUrl });
       console.log(response.data.result);
-      setCaptions(response?.data?.result);
-  
-      // Directly pass videoScriptData to GenerateImage
+      setCaptions(response.data.result);  // Update context with captions
       await GenerateImage(videoScriptData);
     } catch (error) {
       console.error('Error generating captions:', error);
@@ -132,7 +110,6 @@ function CreateNew() {
     }
   };
   
-
   const GenerateImage = async (videoScriptData) => {
     if (!videoScriptData || !Array.isArray(videoScriptData)) {
       console.error('videoScriptData is not defined or is not an array');
@@ -142,22 +119,14 @@ function CreateNew() {
   
     let images = [];
     try {
-      // Use Promise.all to run image generation in parallel
       const imagePromises = videoScriptData.map(async (element) => {
-        const resp = await axios.post('/api/generate-image', {
-          prompt: element?.imagePrompt,
-        });
-        console.log(resp.data.result);
+        const resp = await axios.post('/api/generate-image', { prompt: element?.imagePrompt });
         return resp.data.result;
       });
   
       images = await Promise.all(imagePromises);
       console.log(images);
-      setVideoData(prev=>({
-        ...prev,
-        'imageList': images // Corrected to use images
-      }))
-      setImageList(images);
+      setImageList(images);  // Update context with image list
     } catch (error) {
       console.error('Error generating images:', error);
     } finally {
@@ -165,9 +134,9 @@ function CreateNew() {
     }
   };
   
-  useEffect(()=>{
-    console.log(videoData);
-  },[videoData])
+  useEffect(() => {
+    console.log({ videoScript, audioFileUrl, captions, imageList });
+  }, [videoScript, audioFileUrl, captions, imageList]);
 
   return (
     <div>
@@ -187,8 +156,7 @@ function CreateNew() {
         {/* Create Button */}
         <Button className="mt-10 w-full" onClick={onCreateClickHandler}>
           Create Short Video
-  
-      </Button>
+        </Button>
       </div>
 
       {/* Only render CustomLoading when loading is true */}

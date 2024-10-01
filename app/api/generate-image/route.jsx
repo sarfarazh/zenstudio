@@ -8,13 +8,18 @@ export async function POST(req) {
   try {
     const { prompt } = await req.json();
 
+    if (!prompt) {
+      console.error('No prompt provided for image generation');
+      return NextResponse.json({ error: 'No prompt provided' }, { status: 400 });
+    }
+
     // Initialize Replicate client
     const replicate = new Replicate({
       auth: process.env.REPLICATE_API_TOKEN,
     });
 
     const input = {
-      prompt: prompt,
+      prompt,
       height: 1280,
       width: 1024,
       num_outputs: 1,
@@ -26,35 +31,35 @@ export async function POST(req) {
       { input }
     );
 
-    console.log(output);
+    const imageUrl = output[0];
+    if (!imageUrl) {
+      console.error('No image URL returned by the model');
+      return NextResponse.json({ error: 'Image generation failed' }, { status: 422 });
+    }
 
     // Fetch the image data as an array buffer
-    const imageUrl = output[0];
     const response = await axios.get(imageUrl, { responseType: 'arraybuffer' });
     const imageBuffer = response.data;
 
-    // Define the file name and reference
+    // Define the file name and Firebase reference
     const fileName = 'zenstudio-files/' + Date.now() + '.png';
     const storageRef = ref(storage, fileName);
 
-    // Define metadata for the upload
-    const metadata = {
-      contentType: 'image/png',
-    };
-
     // Upload the image buffer to Firebase Storage
-    await uploadBytes(storageRef, imageBuffer, metadata);
+    await uploadBytes(storageRef, imageBuffer, { contentType: 'image/png' });
 
-    // Get the download URL
+    // Get the download URL for the uploaded image
     const downloadUrl = await getDownloadURL(storageRef);
-    console.log(downloadUrl);
+    console.log('Generated image download URL:', downloadUrl);
 
-    // Return the download URL in the response
+    // Return the download URL
     return NextResponse.json({ result: downloadUrl });
+    
   } catch (e) {
-    // Log the error and return an error response
+    // Log the error for debugging
     console.error("Error generating image:", e.message || e);
 
+    // Return a detailed error message
     return NextResponse.json(
       { error: e.message || "An error occurred while generating the image" },
       { status: 500 }
