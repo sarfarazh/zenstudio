@@ -38,32 +38,21 @@ function CreateNew() {
 
   const GetVideoScript = async () => {
     setLoading(true);
-    const prompt =
-      'Write a script to generate ' +
-      formData.duration +
-      ' video on topic: ' +
-      formData.topic +
-      ' story along with a detailed 60 words AI image generation prompt in ' +
-      formData.imageStyle +
-      ' format for each scene and give me result in JSON format with imagePrompt and ContentText as field, no Plain text';
-    console.log('Prompt:', prompt);
+    const prompt = `Write a script to generate ${formData.duration} video on topic: ${formData.topic} story along with a detailed 60 words AI image generation prompt in ${formData.imageStyle} format for each scene and give me result in JSON format with imagePrompt and ContentText as field, no Plain text`;
   
     try {
-      const result = await axios.post('/api/get-video-script', {
-        prompt: prompt,
-      });
-  
-      console.log('API response:', result.data);
-  
-      // Check if the result is an array and contains the expected fields
+      const result = await axios.post('/api/get-video-script', { prompt });
       if (result.data && Array.isArray(result.data.result)) {
-        console.log('Valid videoScript:', result.data.result);
-        setVideoData(prev => ({
-          ...prev,
-          'videoScript': result.data.result  // Ensure videoScript field matches your schema
-        }));
-        setVideoScript(result.data.result);  // Update state asynchronously
-        await GenerateAudioFile(result.data.result);  // Pass videoScriptData directly
+        const videoScriptData = result.data.result;
+        console.log('Valid videoScript:', videoScriptData);
+  
+        // Generate audio and captions sequentially and pass them to GenerateImage
+        const audioFileUrl = await GenerateAudioFile(videoScriptData);
+        const captions = await GenerateAudioCaption(audioFileUrl, videoScriptData);
+        
+        // Now pass everything to GenerateImage
+        await GenerateImage(videoScriptData, captions, audioFileUrl);
+  
       } else {
         console.error('Invalid or missing videoScript in API response.');
       }
@@ -74,17 +63,11 @@ function CreateNew() {
     }
   };
   
+  
   const GenerateAudioFile = async (videoScriptData) => {
     setLoading(true);
-    let script = '';
+    let script = videoScriptData.map(item => item.contentText).join(' ');
     const id = uuidv4();
-  
-    // Ensure we have valid `contentText`
-    videoScriptData.forEach((item) => {
-      script += item.contentText ? item.contentText + ' ' : '';
-    });
-  
-    console.log('Final script for Text-to-Speech:', script);
   
     if (!script.trim()) {
       console.error('Script is empty or undefined.');
@@ -93,20 +76,12 @@ function CreateNew() {
     }
   
     try {
-      const response = await axios.post('/api/generate-audio', {
-        text: script,
-        id: id,
-      });
-  
+      const response = await axios.post('/api/generate-audio', { text: script, id });
       console.log('Audio generation response:', response.data);
-      setVideoData(prev => ({
-        ...prev,
-        'audioFileUrl': response.data.Result  // Ensure audioFileUrl is correctly set
-      }));
-      setAudioFileUrl(response.data.Result);
   
-      // Pass videoScriptData to GenerateAudioCaption
-      await GenerateAudioCaption(response.data.Result, videoScriptData);
+      // Return audioFileUrl for further steps
+      return response.data.Result;
+  
     } catch (error) {
       console.error('Error generating audio:', error);
     } finally {
@@ -114,28 +89,22 @@ function CreateNew() {
     }
   };
   
-
   const GenerateAudioCaption = async (fileUrl, videoScriptData) => {
     setLoading(true);
     try {
-      const response = await axios.post('/api/generate-caption', {
-        audioFileUrl: fileUrl,
-      });
+      const response = await axios.post('/api/generate-caption', { audioFileUrl: fileUrl });
       console.log('Captions response:', response.data.result);
-      setVideoData(prev => ({
-        ...prev,
-        'captions': response.data.result  // Ensure captions field is correctly set
-      }));
-      setCaptions(response?.data?.result);
   
-      // Directly pass videoScriptData to GenerateImage
-      await GenerateImage(videoScriptData);
+      // Return captions for further steps
+      return response.data.result;
+  
     } catch (error) {
       console.error('Error generating captions:', error);
     } finally {
       setLoading(false);
     }
   };
+  
   
   const GenerateImage = async (videoScriptData, captions, audioFileUrl) => {
     if (!videoScriptData || !Array.isArray(videoScriptData)) {
@@ -157,13 +126,14 @@ function CreateNew() {
       images = await Promise.all(imagePromises);
       console.log('Generated images:', images);
   
-      // Batch update videoData after all steps are completed
-      setVideoData({
+      // Instead of updating videoData step by step, we batch all updates together at the end
+      setVideoData(prev => ({
+        ...prev,
         videoScript: videoScriptData,
         audioFileUrl: audioFileUrl,
         captions: captions,
-        imageList: images,
-      });
+        imageList: images,  // Ensure imageList is correctly set
+      }));
   
       setIsPipelineComplete(true);  // Mark the pipeline as complete
     } catch (error) {
@@ -172,10 +142,13 @@ function CreateNew() {
       setLoading(false);
     }
   };
-  
+
   
   useEffect(() => {
-    // Ensure SaveVideoData is called only once when all fields are set and pipeline is fully complete
+    console.log('Pipeline Status:', isPipelineComplete);  // Log pipeline status
+    console.log('Video Data Status:', videoData);  // Log current videoData
+  
+    // Ensure SaveVideoData is only called when the pipeline is complete and all fields exist
     if (
       isPipelineComplete && 
       videoData?.videoScript && 
@@ -184,25 +157,38 @@ function CreateNew() {
       videoData?.imageList
     ) {
       console.log('Pipeline complete. Saving video data...');
-  
-      // Use a guard to ensure that SaveVideoData is called only once
+      
       if (!videoData.isSaved) {
-        SaveVideoData({ ...videoData, isSaved: true });  // Add a flag to prevent multiple saves
+        console.log('Calling SaveVideoData for the first time...');
+        SaveVideoData(videoData);  // Only call if videoData hasn't been saved yet
+      } else {
+        console.log('Data has already been saved, skipping...');
       }
     }
-  }, [videoData, isPipelineComplete]);
+  }, [videoData, isPipelineComplete]);  // Watch both videoData and isPipelineComplete
   
   const SaveVideoData = async (videoData) => {
     try {
-      setLoading(true);
+      // Check for circular references in videoData
+      try {
+        JSON.stringify(videoData); // If this throws an error, there is a circular reference
+      } catch (err) {
+        console.error('Circular reference detected in videoData:', err);
+        return; // Exit to prevent further execution
+      }
   
-      // Log sizes of individual data components
+      // Guard clause to prevent repeated calls
+      if (videoData.isSaved) {
+        console.log('Video data already saved. Skipping save...');
+        return; // Exit if videoData has already been saved
+      }
+  
+      console.log('Saving video data to the database...');
       console.log('Size of videoScript:', JSON.stringify(videoData?.videoScript).length);
       console.log('Size of audioFileUrl:', videoData?.audioFileUrl?.length);
       console.log('Size of captions:', JSON.stringify(videoData?.captions).length);
       console.log('Size of imageList:', JSON.stringify(videoData?.imageList).length);
   
-      console.log('Saving video data to the database...');
       const result = await db
         .insert(VideoData)
         .values({
@@ -215,10 +201,14 @@ function CreateNew() {
         .returning('id');
   
       console.log('Inserted ID:', result[0]?.id);
+  
+      // Mark videoData as saved to avoid future calls
+      setVideoData(prev => ({ ...prev, isSaved: true }));
+  
     } catch (error) {
       console.error('Error inserting video data:', error);
     } finally {
-      setLoading(false);
+      setLoading(false);  // Ensure loading state is properly toggled off
     }
   };
   

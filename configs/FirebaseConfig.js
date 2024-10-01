@@ -15,16 +15,3 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 export const storage=getStorage(app);
-
-
-// let app = null;
-// let storage = null;
-
-// // Ensure Firebase is only initialized in the browser and not on the server
-// if (typeof window !== "undefined" && !getApps().length) {
-//   app = initializeApp(firebaseConfig);
-//   storage = getStorage(app); // Initialize Firebase Storage
-// }
-
-// export { storage };
-

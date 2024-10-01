@@ -1,4 +1,4 @@
-import textToSpeech from "@google-cloud/text-to-speech";
+import textToSpeech from "@google-cloud/text-to-speech"; 
 import { storage } from "../../../configs/FirebaseConfig"; // Import storage
 import { getDownloadURL, uploadBytes, ref, getStorage } from "firebase/storage";
 import { NextResponse } from "next/server";
