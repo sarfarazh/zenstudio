@@ -1,6 +1,6 @@
-import axios from "axios"; // Import axios
+import axios from "axios";
 import { storage } from "@/configs/FirebaseConfig";
-import { getDownloadURL, uploadString, ref } from "firebase/storage"; // Import ref from Firebase
+import { getDownloadURL, uploadBytes, ref } from "firebase/storage";
 import { NextResponse } from "next/server";
 import Replicate from "replicate";
 
@@ -10,7 +10,7 @@ export async function POST(req) {
 
     // Initialize Replicate client
     const replicate = new Replicate({
-      auth: process.env.REPLICATE_API_TOKEN, // Ensure this token is correctly set
+      auth: process.env.REPLICATE_API_TOKEN,
     });
 
     const input = {
@@ -28,45 +28,36 @@ export async function POST(req) {
 
     console.log(output);
 
-    // Save to Firebase
-    const base64Image = "data:image/png;base64," + (await ConvertImage(output[0]));
+    // Fetch the image data as an array buffer
+    const imageUrl = output[0];
+    const response = await axios.get(imageUrl, { responseType: 'arraybuffer' });
+    const imageBuffer = response.data;
+
+    // Define the file name and reference
     const fileName = 'zenstudio-files/' + Date.now() + '.png';
-    const storageRef = ref(storage, fileName); // Properly define ref
+    const storageRef = ref(storage, fileName);
 
-    await uploadString(storageRef, base64Image, 'data_url');
+    // Define metadata for the upload
+    const metadata = {
+      contentType: 'image/png',
+    };
 
+    // Upload the image buffer to Firebase Storage
+    await uploadBytes(storageRef, imageBuffer, metadata);
+
+    // Get the download URL
     const downloadUrl = await getDownloadURL(storageRef);
     console.log(downloadUrl);
 
-    // Return the first result from the array of outputs
+    // Return the download URL in the response
     return NextResponse.json({ result: downloadUrl });
   } catch (e) {
-    // Log the error and return a descriptive error response
+    // Log the error and return an error response
     console.error("Error generating image:", e.message || e);
 
-    // Return a NextResponse with the error message
     return NextResponse.json(
       { error: e.message || "An error occurred while generating the image" },
       { status: 500 }
     );
   }
 }
-
-// Convert image URL to base64
-const ConvertImage = async (imageUrl) => {
-  try {
-    const resp = await axios.get(imageUrl, { responseType: 'arraybuffer' });
-
-    const base64Image = Buffer.from(resp.data).toString('base64');
-    return base64Image;
-  } catch (e) {
-    // Log the error and return a descriptive error response
-    console.error("Error generating image:", e.message || e);
-
-    // Return a NextResponse with the error message
-    return NextResponse.json(
-      { error: e.message || "An error occurred while generating the image" },
-      { status: 500 }
-    );
-  }
-};
