@@ -10,11 +10,18 @@ import { v4 as uuidv4 } from 'uuid';
 import { useVideoData } from '@/app/_context/useVideoData';  // Custom hook for state
 import { db } from '@/configs/db';
 import { VideoData } from '@/configs/schema';
+import { useUser } from "@clerk/nextjs"; // Clerk's useUser hook to get the logged-in user's info
+
 
 function CreateNew() {
   const [formData, setFormData] = useState({});
   const [loading, setLoading] = useState(false);
+  const { user } = useUser(); // Retrieve the user object from Clerk
+  
+  // Access the primary email address of the logged-in user
+  const userEmail = user?.primaryEmailAddress?.emailAddress || "user@example.com"; // Fallback to a default email if unavailable
 
+  
   // Using video data from the context
   const {
     videoScript,
@@ -155,7 +162,7 @@ useEffect(() => {
       audioFileUrl,
       captions,
       imageList,
-      createdBy: 'user@example.com', // Replace with actual user email or identifier
+      createdBy: userEmail,  // Set to the logged-in user's email
     };
 
     // Save video data to the database
