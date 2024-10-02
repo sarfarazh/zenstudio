@@ -19,8 +19,8 @@ function CreateNew() {
   const [loading, setLoading] = useState(false);
   const { user } = useUser(); // Retrieve the user object from Clerk
 
-  const [playVideo,setPlayVideo]=useState(false);
-  const [videoId,setVideoId]=useState(null);
+  const [playVideo,setPlayVideo]=useState(true);
+  const [videoId,setVideoId]=useState(20);
   
   // Access the primary email address of the logged-in user
   const userEmail = user?.primaryEmailAddress?.emailAddress || "user@example.com"; // Fallback to a default email if unavailable
