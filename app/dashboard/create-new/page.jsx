@@ -76,6 +76,35 @@ function CreateNew() {
     }
   };
   
+  const GenerateAudioFile = async (videoScriptData) => {
+    setLoading(true);
+    let script = '';
+    const id = uuidv4();
+  
+    videoScriptData.forEach((item) => {
+      script += item.contentText ? item.contentText + ' ' : '';
+    });
+  
+    console.log('Final script for Text-to-Speech:', script);
+  
+    if (!script.trim()) {
+      console.error('Script is empty or undefined.');
+      setLoading(false);
+      return;
+    }
+  
+    try {
+      const response = await axios.post('/api/generate-audio', { text: script, id });
+      console.log('Audio generation response:', response.data);
+      setAudioFileUrl(response.data.Result);  // Update context with audio file URL
+      await GenerateAudioCaption(response.data.Result, videoScriptData);
+    } catch (error) {
+      console.error('Error generating audio:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+  
   const GenerateAudioCaption = async (fileUrl, videoScriptData) => {
     setLoading(true);
     try {
