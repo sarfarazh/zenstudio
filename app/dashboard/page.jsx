@@ -27,3 +27,6 @@ function Dashboard() {
 }
 
 export default Dashboard;
+
+
+//remotion app integration is completed. Just another git commit message
