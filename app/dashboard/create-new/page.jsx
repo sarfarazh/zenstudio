@@ -11,12 +11,16 @@ import { useVideoData } from '@/app/_context/useVideoData';  // Custom hook for 
 import { db } from '@/configs/db';
 import { VideoData } from '@/configs/schema';
 import { useUser } from "@clerk/nextjs"; // Clerk's useUser hook to get the logged-in user's info
+import PlayerDialog from '../_components/PlayerDialog';
 
 
 function CreateNew() {
   const [formData, setFormData] = useState({});
   const [loading, setLoading] = useState(false);
   const { user } = useUser(); // Retrieve the user object from Clerk
+
+  const [playVideo,setPlayVideo]=useState(false);
+  const [videoId,setVideoId]=useState(null);
   
   // Access the primary email address of the logged-in user
   const userEmail = user?.primaryEmailAddress?.emailAddress || "user@example.com"; // Fallback to a default email if unavailable
@@ -148,11 +152,13 @@ const saveVideoData = async (data) => {
   try {
     // Insert the collected video data into the VideoData table
     await db.insert(VideoData).values(data);
+    const insertedRecord = await db.insert(VideoData).values(data).returning(); // Use .returning() to get inserted data
+
     console.log('Video data saved to database successfully');
 
     // Set videoId and playVideo to trigger the Remotion PlayerDialog
-    // setVideoId(result[0].id)
-    // setPlayVideo(true)
+    setVideoId(insertedRecord[0].id);  // Set the videoId from the inserted record
+    setPlayVideo(true)
 
   } catch (error) {
     console.error('Error saving video data to database:', error);
@@ -199,6 +205,7 @@ return (
 
     {/* Only render CustomLoading when loading is true */}
     {loading && <CustomLoading loading={loading} />}
+    <PlayerDialog playVideo={playVideo} videoId={videoId}/>
   </div>
 );
 }

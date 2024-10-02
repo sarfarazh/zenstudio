@@ -26,7 +26,8 @@ function PlayerDialog({ playVideo, videoId }) { // Destructure props
         </DialogHeader>
         {/* Use block-level element (div) instead of p tag for the Player component */}
         <DialogDescription>
-          <div>
+        </DialogDescription>
+        <div>
             <Player
               component={RemotionVideo}
               durationInFrames={120}
@@ -35,7 +36,6 @@ function PlayerDialog({ playVideo, videoId }) { // Destructure props
               fps={30}
             />
           </div>
-        </DialogDescription>
       </DialogContent>
     </Dialog>
   );
