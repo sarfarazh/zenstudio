@@ -21,7 +21,6 @@ function CreateNew() {
   // Access the primary email address of the logged-in user
   const userEmail = user?.primaryEmailAddress?.emailAddress || "user@example.com"; // Fallback to a default email if unavailable
 
-  
   // Using video data from the context
   const {
     videoScript,
@@ -43,6 +42,7 @@ function CreateNew() {
   };
 
   const onCreateClickHandler = () => {
+    // Ensure the form is only submitted when this button is clicked
     GetVideoScript();
   };
 
@@ -71,35 +71,6 @@ function CreateNew() {
       }
     } catch (error) {
       console.error('Error generating video script:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-  
-  const GenerateAudioFile = async (videoScriptData) => {
-    setLoading(true);
-    let script = '';
-    const id = uuidv4();
-  
-    videoScriptData.forEach((item) => {
-      script += item.contentText ? item.contentText + ' ' : '';
-    });
-  
-    console.log('Final script for Text-to-Speech:', script);
-  
-    if (!script.trim()) {
-      console.error('Script is empty or undefined.');
-      setLoading(false);
-      return;
-    }
-  
-    try {
-      const response = await axios.post('/api/generate-audio', { text: script, id });
-      console.log('Audio generation response:', response.data);
-      setAudioFileUrl(response.data.Result);  // Update context with audio file URL
-      await GenerateAudioCaption(response.data.Result, videoScriptData);
-    } catch (error) {
-      console.error('Error generating audio:', error);
     } finally {
       setLoading(false);
     }
@@ -149,10 +120,16 @@ const saveVideoData = async (data) => {
     // Insert the collected video data into the VideoData table
     await db.insert(VideoData).values(data);
     console.log('Video data saved to database successfully');
+
+    // Set videoId and playVideo to trigger the Remotion PlayerDialog
+    // setVideoId(result[0].id)
+    // setPlayVideo(true)
+
   } catch (error) {
     console.error('Error saving video data to database:', error);
   }
 };
+
 
 // Call this function after all the data (videoScript, audioFileUrl, captions, imageList) is ready
 useEffect(() => {
@@ -164,38 +141,37 @@ useEffect(() => {
       imageList,
       createdBy: userEmail,  // Set to the logged-in user's email
     };
-
     // Save video data to the database
     saveVideoData(videoData);
   }
 }, [videoScript, audioFileUrl, captions, imageList]);
 
 
-  return (
-    <div>
-      <div className="flex justify-between items-center">
-        <h2 className="font-bold text-2xl text-primary">Create New</h2>
-      </div>
-      <div className="mt-10 shadow-md p-10">
-        {/* Select Topic */}
-        <SelectTopic onUserSelect={onHandleInputChange} />
-
-        {/* Select Style */}
-        <SelectStyle onUserSelect={onHandleInputChange} />
-
-        {/* Duration */}
-        <SelectDuration onUserSelect={onHandleInputChange} />
-
-        {/* Create Button */}
-        <Button className="mt-10 w-full" onClick={onCreateClickHandler}>
-          Create Short Video
-        </Button>
-      </div>
-
-      {/* Only render CustomLoading when loading is true */}
-      {loading && <CustomLoading loading={loading} />}
+return (
+  <div>
+    <div className="flex justify-between items-center">
+      <h2 className="font-bold text-2xl text-primary">Create New</h2>
     </div>
-  );
+    <div className="mt-10 shadow-md p-10">
+      {/* Select Topic */}
+      <SelectTopic onUserSelect={onHandleInputChange} />
+
+      {/* Select Style */}
+      <SelectStyle onUserSelect={onHandleInputChange} />
+
+      {/* Select Duration */}
+      <SelectDuration onUserSelect={onHandleInputChange} />
+
+      {/* Create Button */}
+      <Button className="mt-10 w-full" onClick={onCreateClickHandler}>
+        Create Short Video
+      </Button>
+    </div>
+
+    {/* Only render CustomLoading when loading is true */}
+    {loading && <CustomLoading loading={loading} />}
+  </div>
+);
 }
 
 export default CreateNew;
