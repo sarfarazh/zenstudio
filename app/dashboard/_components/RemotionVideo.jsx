@@ -72,3 +72,5 @@ function RemotionVideo({ videoScript, imageList, audioFileUrl, captions, setDura
 }
 
 export default RemotionVideo;
+
+//This file needs more optimization. Just a comment
