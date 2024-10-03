@@ -77,7 +77,7 @@ function PlayerDialog({ playVideo, videoId, setOpenPlayerDialog }) {
         </div>
 
         <div className="flex space-x-4 mt-5">
-          <Button variant="ghost" onClick={() => { setOpenDialog(false); setOpenPlayerDialog(false); }}>Cancel</Button>
+          {/* <Button variant="ghost" onClick={() => { setOpenDialog(false); setOpenPlayerDialog(false); }}>Cancel</Button> */}
           <Button>Export</Button>
         </div>
       </DialogContent>

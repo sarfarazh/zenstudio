@@ -32,6 +32,11 @@ export const useVideoData = () => {
     dispatch({ type: 'SET_CREATED_BY', payload: createdBy });
   };
 
+  // Method to reset all video data
+  const resetVideoData = () => {
+    dispatch({ type: 'RESET_VIDEO_DATA' });
+  };
+
   // Return the state and the helper functions
   return {
     videoScript: state.videoScript,
@@ -44,5 +49,6 @@ export const useVideoData = () => {
     setCaptions,
     setImageList,
     setCreatedBy,
+    resetVideoData, // Include the reset method
   };
 };

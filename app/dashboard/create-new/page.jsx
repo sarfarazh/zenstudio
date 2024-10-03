@@ -7,11 +7,10 @@ import { Button } from '@/components/ui/button';
 import axios from 'axios';
 import CustomLoading from './_components/CustomLoading';
 import { v4 as uuidv4 } from 'uuid';
-import { useVideoData } from '@/app/_context/useVideoData';  // Custom hook for state
+import { useUser } from '@clerk/nextjs'; // Clerk's useUser hook to get the logged-in user's info
+import PlayerDialog from '../_components/PlayerDialog';
 import { db } from '@/configs/db';
 import { VideoData } from '@/configs/schema';
-import { useUser } from "@clerk/nextjs"; // Clerk's useUser hook to get the logged-in user's info
-import PlayerDialog from '../_components/PlayerDialog';
 
 function CreateNew() {
   const [formData, setFormData] = useState({});
@@ -20,25 +19,24 @@ function CreateNew() {
 
   const [playVideo, setPlayVideo] = useState(false);
   const [videoId, setVideoId] = useState(null);
-  const [dataSaved, setDataSaved] = useState(false);  // Prevents multiple saves
 
   // Access the primary email address of the logged-in user
-  const userEmail = user?.primaryEmailAddress?.emailAddress || "user@example.com"; // Fallback to a default email if unavailable
+  const userEmail =
+    user?.primaryEmailAddress?.emailAddress || 'user@example.com'; // Fallback to a default email if unavailable
 
-  // Using video data from the context
-  const {
-    videoScript,
-    audioFileUrl,
-    captions,
-    imageList,
-    setVideoScript,
-    setAudioFileUrl,
-    setCaptions,
-    setImageList,
-  } = useVideoData();  // Custom hook to manage video data
+  // Local variables to hold data
+  let videoScriptData = [];
+  let audioFileUrlData = '';
+  let captionsData = [];
+  let imageListData = [];
+
+  // Reset state on component mount
+  useEffect(() => {
+    setVideoId(null);
+    setPlayVideo(false);
+  }, []);
 
   const onHandleInputChange = (fieldName, fieldValue) => {
-    console.log(fieldName, fieldValue);
     setFormData((prev) => ({
       ...prev,
       [fieldName]: fieldValue,
@@ -46,7 +44,6 @@ function CreateNew() {
   };
 
   const onCreateClickHandler = () => {
-    // Ensure the form is only submitted when this button is clicked
     GetVideoScript();
   };
 
@@ -68,8 +65,8 @@ function CreateNew() {
 
       if (result.data && Array.isArray(result.data.result)) {
         console.log('Valid videoScript:', result.data.result);
-        setVideoScript(result.data.result);  // Use context's dispatch for video script
-        await GenerateAudioFile(result.data.result);  // Pass videoScriptData directly
+        videoScriptData = result.data.result;
+        await GenerateAudioFile(videoScriptData);
       } else {
         console.error('Invalid or missing videoScript in API response.');
       }
@@ -98,10 +95,13 @@ function CreateNew() {
     }
 
     try {
-      const response = await axios.post('/api/generate-audio', { text: script, id });
+      const response = await axios.post('/api/generate-audio', {
+        text: script,
+        id,
+      });
       console.log('Audio generation response:', response.data);
-      setAudioFileUrl(response.data.Result);  // Update context with audio file URL
-      await GenerateAudioCaption(response.data.Result, videoScriptData);
+      audioFileUrlData = response.data.Result; // Store in local variable
+      await GenerateAudioCaption(audioFileUrlData, videoScriptData);
     } catch (error) {
       console.error('Error generating audio:', error);
     } finally {
@@ -112,9 +112,11 @@ function CreateNew() {
   const GenerateAudioCaption = async (fileUrl, videoScriptData) => {
     setLoading(true);
     try {
-      const response = await axios.post('/api/generate-caption', { audioFileUrl: fileUrl });
+      const response = await axios.post('/api/generate-caption', {
+        audioFileUrl: fileUrl,
+      });
       console.log(response.data.result);
-      setCaptions(response.data.result);  // Update context with captions
+      captionsData = response.data.result; // Store in local variable
       await GenerateImage(videoScriptData);
     } catch (error) {
       console.error('Error generating captions:', error);
@@ -130,16 +132,42 @@ function CreateNew() {
       return;
     }
 
+    setLoading(true);
     let images = [];
     try {
       const imagePromises = videoScriptData.map(async (element) => {
-        const resp = await axios.post('/api/generate-image', { prompt: element?.imagePrompt });
+        const resp = await axios.post('/api/generate-image', {
+          prompt: element?.imagePrompt,
+        });
         return resp.data.result;
       });
 
       images = await Promise.all(imagePromises);
-      console.log(images);
-      setImageList(images);  // Update context with image list
+      console.log('Generated images:', images);
+      imageListData = images; // Store in local variable
+
+      // After all data is ready, save video data
+      const videoData = {
+        videoScript: videoScriptData,
+        audioFileUrl: audioFileUrlData,
+        captions: captionsData,
+        imageList: imageListData,
+        createdBy: userEmail, // Set to the logged-in user's email
+      };
+
+      console.log('Saving video data with:', videoData);
+
+      // Check if any of the fields are empty
+      if (
+        videoData.videoScript.length === 0 ||
+        !videoData.audioFileUrl ||
+        videoData.captions.length === 0 ||
+        videoData.imageList.length === 0
+      ) {
+        console.error('One or more fields are empty, not saving to database.');
+      } else {
+        await saveVideoData(videoData);
+      }
     } catch (error) {
       console.error('Error generating images:', error);
     } finally {
@@ -149,35 +177,18 @@ function CreateNew() {
 
   // Function to save video data to the database
   const saveVideoData = async (data) => {
-    if (dataSaved || videoId) return;  // Prevent multiple save operations
-    setDataSaved(true);  // Mark data as saved to prevent re-saves
-  
     try {
-      const insertedRecord = await db.insert(VideoData).values(data).returning(); // Use .returning() to get inserted data
+      const insertedRecord = await db
+        .insert(VideoData)
+        .values(data)
+        .returning(); // Use .returning() to get inserted data
       console.log('Video data saved to database successfully');
-      setVideoId(insertedRecord[0].id);  // Set the videoId from the inserted record
+      setVideoId(insertedRecord[0].id); // Set the videoId from the inserted record
       setPlayVideo(true);
     } catch (error) {
       console.error('Error saving video data to database:', error);
     }
   };
-  
-
-  // Call this function after all the data (videoScript, audioFileUrl, captions, imageList) is ready
-  useEffect(() => {
-    if (videoScript.length > 0 && audioFileUrl && captions.length > 0 && imageList.length > 0 && !dataSaved && !videoId) {
-      const videoData = {
-        videoScript,
-        audioFileUrl,
-        captions,
-        imageList,
-        createdBy: userEmail,  // Set to the logged-in user's email
-      };
-      // Save video data to the database
-      saveVideoData(videoData);
-    }
-  }, [videoScript, audioFileUrl, captions, imageList, userEmail, dataSaved, videoId]);
-  
 
   return (
     <div>
@@ -195,14 +206,26 @@ function CreateNew() {
         <SelectDuration onUserSelect={onHandleInputChange} />
 
         {/* Create Button */}
-        <Button className="mt-10 w-full" onClick={onCreateClickHandler} disabled={loading}>
+        <Button
+          className="mt-10 w-full"
+          onClick={onCreateClickHandler}
+          disabled={loading}
+        >
           {loading ? 'Creating...' : 'Create Short Video'}
         </Button>
       </div>
 
       {/* Only render CustomLoading when loading is true */}
       {loading && <CustomLoading loading={loading} />}
-      <PlayerDialog playVideo={playVideo} videoId={videoId} />
+
+      {/* Render PlayerDialog only when playVideo is true */}
+      {playVideo && videoId && (
+        <PlayerDialog
+          playVideo={playVideo}
+          videoId={videoId}
+          setOpenPlayerDialog={setPlayVideo} // Pass the setter to allow closing the dialog
+        />
+      )}
     </div>
   );
 }
