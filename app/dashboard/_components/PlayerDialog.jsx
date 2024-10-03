@@ -19,8 +19,6 @@ function PlayerDialog({ playVideo, videoId, setOpenPlayerDialog }) {
   const [durationInFrame, setDurationInFrame] = useState(100);
   const [dataFetched, setDataFetched] = useState(false); // Track if data was fetched
 
-  const router = useRouter();
-
   useEffect(() => {
     console.log("playVideo:", playVideo);
     if (playVideo && videoId && !dataFetched) {
@@ -42,8 +40,15 @@ function PlayerDialog({ playVideo, videoId, setOpenPlayerDialog }) {
     }
   };
 
+  // Function to handle dialog close
+  const handleCloseDialog = () => {
+    setOpenDialog(false);
+    setOpenPlayerDialog(false);  // Close the player dialog
+    setDataFetched(false);  // Reset dataFetched so new video data can be fetched next time
+  };
+
   return (
-    <Dialog open={openDialog} onOpenChange={setOpenDialog}>
+    <Dialog open={openDialog} onOpenChange={handleCloseDialog}>
       <DialogContent
         className="bg-white flex flex-col items-center"
         style={{
@@ -77,7 +82,6 @@ function PlayerDialog({ playVideo, videoId, setOpenPlayerDialog }) {
         </div>
 
         <div className="flex space-x-4 mt-5">
-          {/* <Button variant="ghost" onClick={() => { setOpenDialog(false); setOpenPlayerDialog(false); }}>Cancel</Button> */}
           <Button>Export</Button>
         </div>
       </DialogContent>

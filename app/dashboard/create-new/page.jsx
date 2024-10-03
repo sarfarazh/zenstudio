@@ -54,7 +54,7 @@ function CreateNew() {
       formData.duration +
       ' video on topic: ' +
       formData.topic +
-      ' story along with a detailed 60 words AI image generation prompt in ' +
+      ' story along with a detailed AI image generation prompt in ' +
       formData.imageStyle +
       ' format for each scene and give me result in JSON format with imagePrompt and ContentText as field, no Plain text';
 
