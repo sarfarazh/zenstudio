@@ -21,9 +21,9 @@ function VideoList({ videoList }) {
 
   return (
     <div className='mt-10 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-10'>
-      {videoList.map((video, index) => (
+      {/* Reverse the videoList here */}
+      {videoList.slice().reverse().map((video, index) => (
         <div key={index} className="mb-5">
-          {/* Removing the debug text from the UI */}
           <div onClick={() => {
               console.log("Div clicked for video ID:", video?.id);
               handleOpenDialog(video?.id);
