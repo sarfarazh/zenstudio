@@ -34,9 +34,11 @@ function CreateNew() {
   useEffect(() => {
     setVideoId(null);
     setPlayVideo(false);
+    console.log("Component mounted, reset videoId and playVideo state.");
   }, []);
 
   const onHandleInputChange = (fieldName, fieldValue) => {
+    console.log(`Input Change - Field: ${fieldName}, Value: ${fieldValue}`);
     setFormData((prev) => ({
       ...prev,
       [fieldName]: fieldValue,
@@ -44,24 +46,23 @@ function CreateNew() {
   };
 
   const onCreateClickHandler = () => {
+    console.log("Create Button Clicked, Form Data:", formData);
     GetVideoScript();
   };
 
   const GetVideoScript = async () => {
     setLoading(true);
-    const prompt =
-      'Write a script to generate ' +
-      formData.duration +
-      ' video on topic: ' +
-      formData.topic +
-      ' story along with a detailed AI image generation prompt in ' +
-      formData.imageStyle +
-      ' format for each scene and give me result in JSON format with imagePrompt and ContentText as field, no Plain text';
+    const prompt = `Write a script to generate ${formData.duration} video on topic: ${formData.topic} story along with a detailed AI image generation prompt in ${formData.imageStyle} format for each scene and give me result in JSON format with imagePrompt and ContentText as field, no Plain text`;
+
+    console.log("Sending API request to generate video script with prompt:", prompt);
 
     try {
       const result = await axios.post('/api/get-video-script', { prompt });
+      console.log("API Response from /api/get-video-script:", result.data);
+
       if (result.data && Array.isArray(result.data.result)) {
         videoScriptData = result.data.result;
+        console.log("Valid Video Script Data:", videoScriptData);
         await GenerateAudioFile(videoScriptData);
       } else {
         console.error('Invalid or missing videoScript in API response.');
@@ -88,11 +89,15 @@ function CreateNew() {
       return;
     }
 
+    console.log("Sending API request to generate audio for script:", script);
+
     try {
       const response = await axios.post('/api/generate-audio', {
         text: script,
         id,
       });
+      console.log("API Response from /api/generate-audio:", response.data);
+
       audioFileUrlData = response.data.Result;
       await GenerateAudioCaption(audioFileUrlData, videoScriptData);
     } catch (error) {
@@ -104,10 +109,14 @@ function CreateNew() {
 
   const GenerateAudioCaption = async (fileUrl, videoScriptData) => {
     setLoading(true);
+    console.log("Sending API request to generate captions for audio file URL:", fileUrl);
+
     try {
       const response = await axios.post('/api/generate-caption', {
         audioFileUrl: fileUrl,
       });
+      console.log("API Response from /api/generate-caption:", response.data);
+
       captionsData = response.data.result;
       await GenerateImage(videoScriptData);
     } catch (error) {
@@ -126,15 +135,19 @@ function CreateNew() {
 
     setLoading(true);
     let images = [];
+    console.log("Generating images for video script data:", videoScriptData);
+
     try {
       const imagePromises = videoScriptData.map(async (element) => {
         const resp = await axios.post('/api/generate-image', {
           prompt: element?.imagePrompt,
         });
+        console.log("API Response from /api/generate-image:", resp.data);
         return resp.data.result;
       });
 
       images = await Promise.all(imagePromises);
+      console.log("Generated images:", images);
       imageListData = images;
 
       const videoData = {
@@ -153,6 +166,7 @@ function CreateNew() {
       ) {
         console.error('One or more fields are empty, not saving to database.');
       } else {
+        console.log("Saving video data to the database:", videoData);
         await saveVideoData(videoData);
         await deductCredits();
       }
@@ -165,10 +179,12 @@ function CreateNew() {
 
   const saveVideoData = async (data) => {
     try {
+      console.log("Attempting to save video data to the database:", data);
       const insertedRecord = await db
         .insert(VideoData)
         .values(data)
         .returning();
+      console.log("Inserted record:", insertedRecord);
       setVideoId(insertedRecord[0].id);
       setPlayVideo(true);
     } catch (error) {
@@ -178,6 +194,7 @@ function CreateNew() {
 
   const deductCredits = async () => {
     try {
+      console.log("Deducting credits for user:", userEmail);
       await db
         .update(Users)
         .set({ credits: sql`${Users.credits} - 10` })
