@@ -1,5 +1,16 @@
-import { SignUp } from '@clerk/nextjs'
+import { SignUp } from '@clerk/nextjs';
+import Image from 'next/image';
 
 export default function Page() {
-  return <SignUp />
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2">
+      <div>
+        <Image src="/login.png" alt="signup" width={500} height={500} />
+      </div>
+      <div className="flex justify-center items-center h-screen">
+        {/* Redirect to /dashboard after successful sign-up */}
+        <SignUp forceRedirectUrl="/dashboard" />
+      </div>
+    </div>
+  );
 }
