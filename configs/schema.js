@@ -1,11 +1,12 @@
-import { pgTable, boolean, varchar,serial, json } from "drizzle-orm/pg-core";
+import { pgTable, boolean, varchar,serial, integer, json } from "drizzle-orm/pg-core";
 
 export const Users=pgTable('users',{
     id:serial('id').primaryKey(),
     name:varchar('name'),
     email:varchar('email').notNull(),
     imageUrl:varchar('imageUrl'),
-    subscription:boolean('subscription').default(false)
+    subscription:boolean('subscription').default(false),
+    credits:integer('credits').default(100) //100=10 videos
 })
 
 
