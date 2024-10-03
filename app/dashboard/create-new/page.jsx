@@ -17,6 +17,7 @@ import { CreditsContext } from '../../_context/CreditsContext';
 function CreateNew() {
   const [formData, setFormData] = useState({});
   const [loading, setLoading] = useState(false);
+  const [currentStage, setCurrentStage] = useState(''); // New state to track current stage
   const { user } = useUser();
 
   const [playVideo, setPlayVideo] = useState(false);
@@ -52,6 +53,8 @@ function CreateNew() {
 
   const GetVideoScript = async () => {
     setLoading(true);
+    setCurrentStage('Generating Video Script...'); // Track stage
+
     const prompt = `Write a script to generate ${formData.duration} video on topic: ${formData.topic} story along with a detailed AI image generation prompt in ${formData.imageStyle} format for each scene and give me result in JSON format with imagePrompt and ContentText as field, no Plain text`;
 
     console.log("Sending API request to generate video script with prompt:", prompt);
@@ -76,6 +79,8 @@ function CreateNew() {
 
   const GenerateAudioFile = async (videoScriptData) => {
     setLoading(true);
+    setCurrentStage('Generating Audio...'); // Track stage
+
     let script = '';
     const id = uuidv4();
 
@@ -109,6 +114,8 @@ function CreateNew() {
 
   const GenerateAudioCaption = async (fileUrl, videoScriptData) => {
     setLoading(true);
+    setCurrentStage('Generating Captions...'); // Track stage
+
     console.log("Sending API request to generate captions for audio file URL:", fileUrl);
 
     try {
@@ -134,6 +141,8 @@ function CreateNew() {
     }
 
     setLoading(true);
+    setCurrentStage('Generating Images...'); // Track stage
+
     let images = [];
     console.log("Generating images for video script data:", videoScriptData);
 
@@ -179,6 +188,7 @@ function CreateNew() {
 
   const saveVideoData = async (data) => {
     try {
+      setCurrentStage('Saving Video Data...'); // Track stage
       console.log("Attempting to save video data to the database:", data);
       const insertedRecord = await db
         .insert(VideoData)
@@ -194,6 +204,7 @@ function CreateNew() {
 
   const deductCredits = async () => {
     try {
+      setCurrentStage('Deducting Credits...'); // Track stage
       console.log("Deducting credits for user:", userEmail);
       await db
         .update(Users)
@@ -223,7 +234,7 @@ function CreateNew() {
           {loading ? 'Creating...' : 'Create Short Video'}
         </Button>
       </div>
-      {loading && <CustomLoading loading={loading} />}
+      {loading && <CustomLoading loading={loading} currentStage={currentStage} />} {/* Pass the currentStage */}
       {playVideo && videoId && (
         <PlayerDialog
           playVideo={playVideo}
