@@ -15,37 +15,42 @@ import {
 
 function PlayerDialog({ playVideo, videoId, setOpenPlayerDialog }) {
   const [openDialog, setOpenDialog] = useState(playVideo); // Initialize with playVideo prop
-  const [videoData, setVideoData] = useState();
+  const [videoData, setVideoData] = useState(null);
   const [durationInFrame, setDurationInFrame] = useState(100);
+  const [dataFetched, setDataFetched] = useState(false); // Track if data was fetched
 
   const router = useRouter();
 
   useEffect(() => {
     console.log("playVideo:", playVideo);
-    if (playVideo) {
+    if (playVideo && videoId && !dataFetched) {
       console.log("Opening dialog, fetching video data for ID:", videoId);
       setOpenDialog(true); // Open the dialog
-      videoId && GetVideoData(); // Fetch video data
+      GetVideoData(); // Fetch video data
     }
-  }, [playVideo, videoId]);
+  }, [playVideo, videoId, dataFetched]);
 
   const GetVideoData = async () => {
     console.log("Fetching video data from DB for video ID:", videoId);
-    const result = await db.select().from(VideoData)
-      .where(eq(VideoData.id, videoId));
-    console.log("Video data fetched:", result);
-    setVideoData(result[0]);  // Ensure the data is set correctly
+    try {
+      const result = await db.select().from(VideoData).where(eq(VideoData.id, videoId));
+      console.log("Video data fetched:", result);
+      setVideoData(result[0]);  // Ensure the data is set correctly
+      setDataFetched(true);  // Prevent refetching of the same data
+    } catch (error) {
+      console.error("Error fetching video data:", error);
+    }
   };
 
   return (
     <Dialog open={openDialog} onOpenChange={setOpenDialog}>
-      <DialogContent 
-        className="bg-white flex flex-col items-center" 
+      <DialogContent
+        className="bg-white flex flex-col items-center"
         style={{
-          maxWidth: '480px',        // Control dialog width
-          width: '40%',             // Ensure dialog fits the screen
-          maxHeight: '90vh',        // Limit dialog height to 90% of the viewport
-          overflowY: 'auto',        // Allow scrolling if the content overflows
+          maxWidth: '480px', // Control dialog width
+          width: '40%', // Ensure dialog fits the screen
+          maxHeight: '90vh', // Limit dialog height to 90% of the viewport
+          overflowY: 'auto', // Allow scrolling if the content overflows
         }}
       >
         <DialogHeader>

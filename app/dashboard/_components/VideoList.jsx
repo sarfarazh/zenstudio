@@ -49,7 +49,7 @@ function VideoList({ videoList }) {
         <PlayerDialog
           playVideo={openPlayerDialog}
           videoId={videoId}
-          setOpenPlayerDialog={setOpenPlayerDialog}
+          setOpenPlayerDialog={setOpenPlayerDialog}  // Ensure this is passed
         />
       )}
     </div>

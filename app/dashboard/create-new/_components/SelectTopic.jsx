@@ -8,10 +8,19 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from '@/components/ui/textarea';
+import debounce from 'lodash/debounce'; // Import debounce from lodash
 
 function SelectTopic({ onUserSelect }) {
   const options = ['Custom Prompt', 'Scary Story', 'Bedtime Story', 'Long Form Joke', 'Life Pro Tip', 'ELI5', 'Travel Destination', 'Historical Fact', 'Motivational', 'Fun Facts'];
   const [selectedOption, setSelectedOption] = useState('');
+
+  // Debounced function to handle value changes
+  const handleSelect = debounce((value) => {
+    setSelectedOption(value);
+    if (value !== "Custom Prompt") {
+      onUserSelect('topic', value);  // Predefined prompt
+    }
+  }, 300);  // 300ms debounce
 
   return (
     <div>
@@ -20,12 +29,7 @@ function SelectTopic({ onUserSelect }) {
 
       {/* Topic Selection */}
       <Select
-        onValueChange={(value) => {
-          setSelectedOption(value);
-          if (value !== "Custom Prompt") {
-            onUserSelect('topic', value);  // Predefined prompt
-          }
-        }}
+        onValueChange={(value) => handleSelect(value)}  // Using debounced handler
       >
         <SelectTrigger className="w-full mt-2 p-6 text-lg">
           <SelectValue placeholder="Select Content Type" />
@@ -42,7 +46,7 @@ function SelectTopic({ onUserSelect }) {
         <Textarea
           className="mt-3"
           placeholder="Write your own prompt for the video"
-          maxLength={200} // Limit to 200 characters for example
+          maxLength={200}  // Limit to 200 characters for example
           onChange={(e) => onUserSelect('topic', e.target.value)}  // Pass the custom prompt
         />
       )}

@@ -1,5 +1,6 @@
-import React, { useState } from 'react'
-import Image from 'next/image'
+import React, { useState } from 'react';
+import Image from 'next/image';
+import debounce from 'lodash/debounce'; // Import lodash debounce
 
 function SelectStyle({ onUserSelect }) { // Destructure onUserSelect from props
 
@@ -24,16 +25,17 @@ function SelectStyle({ onUserSelect }) { // Destructure onUserSelect from props
             name: "Ink",
             image: "/ink.png"
         }
-    ]
+    ];
 
     const [selectedOption, setSelectedOption] = useState(null);
 
-    const handleSelect = (name) => {
+    // Debounced function to handle style selection
+    const handleSelect = debounce((name) => {
         setSelectedOption(name);
         if (onUserSelect) {
-            onUserSelect(name); // Call onUserSelect if it's passed as a prop
+            onUserSelect('imageStyle', name); // Pass image style to parent via onUserSelect
         }
-    };
+    }, 300); // 300ms debounce delay
 
     return (
         <div className='mt-5'>
@@ -41,14 +43,13 @@ function SelectStyle({ onUserSelect }) { // Destructure onUserSelect from props
             <p className='text-gray-500'>Select your video style</p>
             <div className='grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-5'>
                 {styleOptions.map((item, index) => (
-                    <div key={index} className={`relative hover:scale-105 
-                    transition-all cursor-pointer
-                    ${selectedOption === item.name ? 'border-4 border-cyan-500 rounded-xl' : ''}
-                    `}
-                    onClick={() =>{
-                        setSelectedOption(item.name)
-                        onUserSelect('imageStyle',item.name)
-                    }} // Handle selection
+                    <div 
+                        key={index} 
+                        className={`relative hover:scale-105 
+                        transition-all cursor-pointer
+                        ${selectedOption === item.name ? 'border-4 border-cyan-500 rounded-xl' : ''}
+                        `}
+                        onClick={() => handleSelect(item.name)} // Debounced handleSelect on click
                     >
                         <Image 
                             src={item.image} 
@@ -63,7 +64,7 @@ function SelectStyle({ onUserSelect }) { // Destructure onUserSelect from props
                 ))}
             </div>
         </div>
-    )
+    );
 }
 
 export default SelectStyle;
