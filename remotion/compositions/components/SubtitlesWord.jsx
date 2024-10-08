@@ -12,15 +12,7 @@ export const SubtitlesWord = ({
   const frame = useCurrentFrame();
   const { fps, height } = useVideoConfig();
 
-  const currentSentence = transcription.find(
-    (sentence) => frame >= sentence.start * fps && frame <= sentence.end * fps
-  );
-
-  if (!currentSentence) {
-    return null;
-  }
-
-  const currentWord = currentSentence.words.find(
+  const currentWord = transcription.find(
     (word) => frame >= word.start * fps && frame <= word.end * fps
   );
 
